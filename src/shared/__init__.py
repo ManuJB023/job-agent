@@ -10,10 +10,10 @@ import hashlib
 import json
 import logging
 import os
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Any, Iterable
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
