@@ -1,0 +1,81 @@
+# ─────────────────────────────────────────────────────────────────────
+# Python
+# ─────────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+env/
+
+# ─────────────────────────────────────────────────────────────────────
+# Build artifacts (Lambda packages and pandas layer)
+# ─────────────────────────────────────────────────────────────────────
+build/
+*.zip
+
+# ─────────────────────────────────────────────────────────────────────
+# Terraform
+# Note: .terraform.lock.hcl SHOULD be committed (pins provider versions).
+# Don't add it here.
+# ─────────────────────────────────────────────────────────────────────
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+*.tfplan
+crash.log
+crash.*.log
+
+# ─────────────────────────────────────────────────────────────────────
+# Secrets and environment-specific config — never commit
+# ─────────────────────────────────────────────────────────────────────
+*.tfvars
+!*.example.tfvars
+.env
+.env.*
+.envrc
+*.pem
+*.key
+
+# ─────────────────────────────────────────────────────────────────────
+# Lambda invoke outputs (created when running `make invoke-*` locally)
+# ─────────────────────────────────────────────────────────────────────
+collector-out.json
+scorer-out.json
+notifier-out.json
+*-out.json
+
+# ─────────────────────────────────────────────────────────────────────
+# Editors and OS
+# ─────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─────────────────────────────────────────────────────────────────────
+# Local artifacts and logs
+# ─────────────────────────────────────────────────────────────────────
+/tmp/
+*.log
+*.bak
+*.tmp
+
+# ─────────────────────────────────────────────────────────────────────
+# Personal data — do NOT commit real resumes, emails, or PII
+# Keep these out of the public repo. Provide *.example.md instead.
+# ─────────────────────────────────────────────────────────────────────
+resumes/*.md
+!resumes/*.example.md
+!resumes/README.md

@@ -1,0 +1,78 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# job-agent config
+# Edit this file to control what the collector searches for.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Where you live / want to work. JobSpy uses this for Indeed/Glassdoor;
+# JSearch appends it to queries. Use "Remote" if you only want remote roles.
+location: "Miami, FL"
+
+# How recent (in hours) a posting must be to be ingested.
+# 24 = "posted in the last day". 72 is a good catch-up value for first runs.
+hours_old: 48
+
+# Per search term, per source. Tune down if Lambda timeouts hit.
+results_per_term: 25
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Search terms
+# Designed for Manuel's four resume variants. Keep terms broad-but-targeted —
+# narrow ones miss roles, very broad ones flood the LLM with junk to score.
+# ─────────────────────────────────────────────────────────────────────────────
+search_terms:
+  # Cloud / DevOps lane (primary)
+  - "Cloud Engineer AWS"
+  - "DevOps Engineer AWS Terraform"
+  - "Cloud Platform Engineer"
+  - "AWS Solutions Architect Associate"
+
+  # SRE lane
+  - "Site Reliability Engineer junior"
+  - "Infrastructure Engineer AWS"
+
+  # Full-Stack lane (lower priority, kept narrow)
+  - "Full Stack Developer Node React AWS"
+
+  # Industrial / Oil & Gas digital lane — Manuel's unique advantage
+  - "Cloud Engineer oil gas industrial"
+  - "DevOps SCADA industrial IoT"
+  - "Industrial IoT Engineer AWS"
+  - "Edge Computing Engineer manufacturing"
+  - "OT IT integration engineer"
+  - "Digital Twin Engineer energy"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Target companies — direct ATS endpoints
+#
+# Curated companies that:
+#   1. Hire cloud/DevOps/SRE roles
+#   2. Are likely to value oil & gas / industrial / field-ops background
+#   3. Have public Greenhouse, Lever, or Ashby boards
+#
+# Verify a slug works with:
+#   curl https://boards-api.greenhouse.io/v1/boards/<slug>/jobs | jq '.jobs | length'
+# Replace placeholders below with verified slugs before deploying.
+# ─────────────────────────────────────────────────────────────────────────────
+target_companies:
+  # Cloud-native / DevOps tooling — likely to value bootcamp grads with
+  # strong portfolios.
+  - { ats: greenhouse, slug: hashicorp }
+  - { ats: greenhouse, slug: gitlab }
+  - { ats: greenhouse, slug: cloudflare }
+  - { ats: greenhouse, slug: datadog }
+  - { ats: greenhouse, slug: pagerduty }
+  - { ats: greenhouse, slug: confluentinc }
+  - { ats: greenhouse, slug: stripe }
+
+  # Industrial IoT / edge compute / OT-IT — direct match to field operations
+  - { ats: greenhouse, slug: samsara }
+  - { ats: lever,      slug: tulip }
+  - { ats: greenhouse, slug: rockwellautomation }
+  - { ats: greenhouse, slug: particle }
+  - { ats: greenhouse, slug: cognite }
+  - { ats: lever,      slug: uptake }
+
+  # NOTE: SLB, Halliburton, Baker Hughes, Chevron use their own ATS systems
+  # not Greenhouse/Lever/Ashby. Those will surface via JobSpy + JSearch
+  # instead. The list above is for cloud-native employers — augment as
+  # you discover company boards.
