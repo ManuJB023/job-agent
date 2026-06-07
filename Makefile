@@ -58,7 +58,7 @@ test:
 # Each package contains: function code, shared/ module, resumes/ (scorer
 # only), config.yaml (collector only), and pip-installed dependencies.
 # ─────────────────────────────────────────────────────────────────────────────
-build: clean build-layer
+build: clean build-layer build-tls-layer
 	@for fn in $(FUNCTIONS); do \
 		echo "==> packaging $$fn"; \
 		mkdir -p $(BUILD_DIR)/$$fn; \
@@ -85,7 +85,7 @@ build: clean build-layer
 		           $(BUILD_DIR)/$$fn/numpy $(BUILD_DIR)/$$fn/numpy-* \
 		           $(BUILD_DIR)/$$fn/pyarrow $(BUILD_DIR)/$$fn/pyarrow-* \
 		           $(BUILD_DIR)/$$fn/numpy.libs \
-		           $(BUILD_DIR)/$$fn/tls_client $(BUILD_DIR)/$$fn/tls_client-* \
+				   $(BUILD_DIR)/$$fn/tls_client $(BUILD_DIR)/$$fn/tls_client-* \
 		           $(BUILD_DIR)/$$fn/botocore/data/ec2 \
 		           $(BUILD_DIR)/$$fn/botocore/data/s3 \
 		           $(BUILD_DIR)/$$fn/botocore/data/rds \
@@ -105,6 +105,25 @@ build-layer:
 		--upgrade
 	cd $(BUILD_DIR)/layer && zip -r ../pandas_layer.zip python/
 	@echo "==> layer built"
+
+build-tls-layer:
+	mkdir -p $(BUILD_DIR)/tls_layer/python
+	$(PY) -m pip install tls-client \
+		--platform manylinux2014_x86_64 \
+		--target $(BUILD_DIR)/tls_layer/python \
+		--implementation cp \
+		--python-version 3.12 \
+		--only-binary=:all: \
+		--upgrade
+	rm -f $(BUILD_DIR)/tls_layer/python/tls_client/dependencies/tls-client-32.dll \
+	      $(BUILD_DIR)/tls_layer/python/tls_client/dependencies/tls-client-64.dll \
+	      $(BUILD_DIR)/tls_layer/python/tls_client/dependencies/tls-client-arm64.dylib \
+	      $(BUILD_DIR)/tls_layer/python/tls_client/dependencies/tls-client-arm64.so \
+	      $(BUILD_DIR)/tls_layer/python/tls_client/dependencies/tls-client-x86.dylib \
+	      $(BUILD_DIR)/tls_layer/python/tls_client/dependencies/tls-client-amd64.so
+	cd $(BUILD_DIR)/tls_layer && zip -r ../tls_layer.zip python/
+	@echo "==> tls layer built"   
+
 clean:
 	rm -rf $(BUILD_DIR)
 
@@ -149,22 +168,24 @@ secrets:
 # Manual invocation
 # ─────────────────────────────────────────────────────────────────────────────
 invoke-collector:
+	@mkdir -p $(BUILD_DIR)
 	$(AWS) lambda invoke \
 		--function-name job-agent-$(ENV_NAME)-collector \
 		--region $(REGION) \
 		--cli-binary-format raw-in-base64-out \
 		--payload '{}' \
-		/tmp/job-agent-collector.json
-	@cat /tmp/job-agent-collector.json && echo
+		$(BUILD_DIR)/invoke-collector.json
+	@cat $(BUILD_DIR)/invoke-collector.json && echo
 
 invoke-notifier:
+	@mkdir -p $(BUILD_DIR)
 	$(AWS) lambda invoke \
 		--function-name job-agent-$(ENV_NAME)-notifier \
 		--region $(REGION) \
 		--cli-binary-format raw-in-base64-out \
 		--payload '{}' \
-		/tmp/job-agent-notifier.json
-	@cat /tmp/job-agent-notifier.json && echo
+		$(BUILD_DIR)/invoke-notifier.json
+	@cat $(BUILD_DIR)/invoke-notifier.json && echo
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Logs
