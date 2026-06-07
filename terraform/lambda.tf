@@ -61,7 +61,7 @@ resource "aws_lambda_function" "collector" {
   source_code_hash = data.archive_file.collector_zip.output_base64sha256
   timeout          = 600  # JobSpy across multiple sources can be slow
   memory_size      = 1024
-  layers           = [aws_lambda_layer_version.pandas_layer.arn]
+  layers           = [aws_lambda_layer_version.pandas_layer.arn, aws_lambda_layer_version.tls_layer.arn]
 
   environment {
     variables = {
@@ -174,4 +174,19 @@ resource "aws_cloudwatch_metric_alarm" "scorer_errors" {
   dimensions = {
     FunctionName = aws_lambda_function.scorer.function_name
   }
+}
+
+resource "aws_s3_object" "tls_layer_zip" {
+  bucket = aws_s3_bucket.artifacts.id
+  key    = "tls_layer.zip"
+  source = "../build/tls_layer.zip"
+  etag   = filemd5("../build/tls_layer.zip")
+}
+
+resource "aws_lambda_layer_version" "tls_layer" {
+  s3_bucket           = aws_s3_bucket.artifacts.id
+  s3_key              = aws_s3_object.tls_layer_zip.key
+  layer_name          = "${local.name_prefix}-tls"
+  compatible_runtimes = ["python3.12"]
+  source_code_hash    = filebase64sha256("../build/tls_layer.zip")
 }

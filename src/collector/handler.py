@@ -44,6 +44,46 @@ def load_config() -> dict[str, Any]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Title filtering
+# Runs before DynamoDB write to drop irrelevant postings early.
+# Blocklist and allowlist are driven by config.yaml — no code changes needed
+# to tune them.
+# ─────────────────────────────────────────────────────────────────────────────
+def passes_title_filter(posting: JobPosting, config: dict) -> bool:
+    """Return False if posting should be dropped based on title/description.
+
+    Two-stage filter:
+      1. Blocklist  — title contains a blocked phrase → drop immediately.
+      2. Allowlist  — if non-empty, title OR top of description must contain
+                      at least one allowed phrase, otherwise drop.
+
+    Both lists are case-insensitive substring matches. Allowlist checks the
+    description top (first 500 chars) in addition to title so that roles like
+    "Senior Engineer – Cloud Infrastructure" (no "cloud" in title) still pass.
+    """
+    title_lower = posting.title.lower()
+    desc_top = posting.description.lower()[:500]
+
+    # Stage 1: blocklist — hard drop on title match
+    for phrase in config.get("title_blocklist", []):
+        if phrase.lower() in title_lower:
+            log_json(log, "debug", "title_blocked",
+                     title=posting.title, company=posting.company, phrase=phrase)
+            return False
+
+    # Stage 2: allowlist — must hit at least one term in title or desc top
+    allowlist = config.get("title_allowlist", [])
+    if allowlist:
+        if not any(term.lower() in title_lower or term.lower() in desc_top
+                   for term in allowlist):
+            log_json(log, "debug", "title_allowlist_miss",
+                     title=posting.title, company=posting.company)
+            return False
+
+    return True
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Source 1 — JobSpy
 # ─────────────────────────────────────────────────────────────────────────────
 def collect_jobspy(search_terms: list[str], location: str, hours_old: int, results_per_term: int) -> list[JobPosting]:
@@ -119,11 +159,14 @@ def collect_jsearch(search_terms: list[str], location: str, hours_old: int) -> l
 
     import urllib.parse
     import urllib.request
+    import time
 
     out: list[JobPosting] = []
     date_posted = "3days" if hours_old <= 72 else "week"
 
-    for term in search_terms:
+    for i, term in enumerate(search_terms):
+        if i > 0:
+            time.sleep(1)
         query = urllib.parse.quote_plus(f"{term} in {location}")
         url = (
             "https://jsearch.p.rapidapi.com/search"
@@ -284,8 +327,16 @@ def handler(event, context):
         all_postings = f_jobspy.result() + f_jsearch.result() + f_ats.result()
 
     # Filter to postings with the minimum viable data.
-    valid = [p for p in all_postings if p.title and p.company and p.description]
-    log_json(log, "info", "collector_normalized", total=len(all_postings), valid=len(valid))
+    raw_valid = [p for p in all_postings if p.title and p.company and p.description]
+    log_json(log, "info", "collector_normalized", total=len(all_postings), valid=len(raw_valid))
+
+    # Apply title blocklist / allowlist filter before writing to DynamoDB.
+    # This prevents sales, marketing, HR, and other irrelevant roles from
+    # flooding the scorer with low-quality jobs.
+    valid = [p for p in raw_valid if passes_title_filter(p, config)]
+    filtered_count = len(raw_valid) - len(valid)
+    log_json(log, "info", "collector_filtered",
+             before=len(raw_valid), after=len(valid), dropped=filtered_count)
 
     # Write each to DynamoDB with conditional put. Counts new vs duplicate.
     table = get_table()
@@ -302,7 +353,7 @@ def handler(event, context):
                      company=posting.company, title=posting.title, error=str(e))
 
     log_json(log, "info", "collector_done", new=new_count, duplicate=dup_count)
-    return {"new": new_count, "duplicate": dup_count, "total_seen": len(valid)}
+    return {"new": new_count, "duplicate": dup_count, "total_seen": len(valid), "filtered": filtered_count}
 
 
 def _safe(fn, *args, **kwargs):
