@@ -1,10 +1,13 @@
 """Collector Lambda.
 
-Runs on a schedule. Ingests job postings from three sources concurrently:
+Runs on a schedule. Ingests job postings from two sources concurrently:
   1. JobSpy   — LinkedIn, Indeed, Glassdoor, ZipRecruiter, Google Jobs.
-  2. JSearch  — RapidAPI aggregator over Google for Jobs. Fallback when
-                 JobSpy hits rate limits.
-  3. Greenhouse — direct ATS JSON for target companies. Highest signal.
+  2. Greenhouse / Lever / Ashby — direct ATS JSON for target companies.
+                                   Highest signal source.
+
+JSearch (RapidAPI) is supported but disabled by default via jsearch_enabled
+in config.yaml. Free tier is 200 requests/month — exhausted in <1 day at
+twice-daily runs with 15 search terms. Re-enable when on a paid plan.
 
 Each source is wrapped to never raise — a failure in one source doesn't
 break the others. All postings flow into the same `JobPosting` shape and
@@ -148,6 +151,8 @@ def _safe_int(v: Any) -> int | None:
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Source 2 — JSearch (RapidAPI)
+# Disabled by default — set jsearch_enabled: true in config.yaml to activate.
+# Free tier: 200 requests/month. Paid tier: ~$10/month for 30,000 requests.
 # ─────────────────────────────────────────────────────────────────────────────
 def collect_jsearch(search_terms: list[str], location: str, hours_old: int) -> list[JobPosting]:
     api_key_param = os.environ.get("JSEARCH_PARAM", "/job-agent/jsearch_api_key")
@@ -314,15 +319,22 @@ def handler(event, context):
     hours_old = config.get("hours_old", 24)
     results_per_term = config.get("results_per_term", 25)
     target_companies = config.get("target_companies", [])
+    jsearch_enabled = config.get("jsearch_enabled", True)
 
     log_json(log, "info", "collector_start",
-             terms=len(search_terms), companies=len(target_companies))
+             terms=len(search_terms), companies=len(target_companies),
+             jsearch_enabled=jsearch_enabled)
 
-    # Run all three sources in parallel. Each is wrapped so one failure
-    # doesn't propagate.
+    # Run sources in parallel. Each is wrapped so one failure doesn't propagate.
+    # JSearch is skipped entirely when jsearch_enabled: false in config.yaml —
+    # no Lambda time wasted on guaranteed 429s when free tier is exhausted.
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
         f_jobspy = pool.submit(_safe, collect_jobspy, search_terms, location, hours_old, results_per_term)
-        f_jsearch = pool.submit(_safe, collect_jsearch, search_terms, location, hours_old)
+        if jsearch_enabled:
+            f_jsearch = pool.submit(_safe, collect_jsearch, search_terms, location, hours_old)
+        else:
+            log_json(log, "info", "jsearch_skipped", reason="disabled in config")
+            f_jsearch = pool.submit(lambda: [])
         f_ats = pool.submit(_safe, collect_ats, target_companies)
         all_postings = f_jobspy.result() + f_jsearch.result() + f_ats.result()
 

@@ -6,6 +6,11 @@ location: "Miami, FL"
 hours_old: 48
 results_per_term: 25
 
+# Set to false to disable JSearch (RapidAPI). Free tier is 200 requests/month.
+# With 15 search terms × 2 runs/day the quota is exhausted in <1 day.
+# Re-enable when on a paid plan or reset to a new account.
+jsearch_enabled: false
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Title filtering — applied in collector BEFORE DynamoDB write
 # ─────────────────────────────────────────────────────────────────────────────
