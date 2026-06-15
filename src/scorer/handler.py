@@ -75,8 +75,9 @@ You will be given:
 
 Your job: judge how well this candidate fits this role, pick which of the four resumes best matches, and explain in two sentences.
 
-Be strict. A 90+ score means the candidate is clearly qualified and would likely get a callback. A 70-89 score means a credible application worth submitting. Below 70 means likely a waste of time. Heavily penalize roles that demand 5+ years of professional IT experience the candidate doesn't have. Heavily reward roles that value industrial / oil & gas / field operations background as a plus, or that accept bootcamp + certifications + portfolio in lieu of years of experience.
+Be realistic but not punishing. A 90+ score means clearly qualified, strong callback likely. A 70-89 score means a credible application worth submitting — the candidate has most of what the role needs even if years-of-IT-experience is short. A 60-69 score means meaningful gaps but worth a stretch application. Below 60 means fundamental domain mismatch.
 
+Years-of-IT-experience gaps are a soft signal, not a disqualifier — many companies hire strong career-changers with bootcamp + portfolio + relevant domain expertise. Do NOT heavily penalize for this alone. DO heavily penalize for fundamental domain mismatches (e.g. security engineer needing 5+ years AppSec, pre-sales SE needing quota history, design roles needing UX portfolio). Heavily reward roles that value industrial/O&G/field operations as a plus, or that explicitly accept bootcamp + certifications + portfolio.
 Variant selection guidance:
   - Pick `industrial_iot` whenever the role mentions OT, SCADA, MQTT, OPC UA, Modbus, edge computing, sensor telemetry, digital twin, oil & gas, energy, manufacturing, or industrial automation — even if the bulk of the role is cloud. This is the candidate's strongest differentiator.
   - Pick `sre` when the role emphasizes reliability, on-call, incident response, observability, or production operations more than greenfield build.
