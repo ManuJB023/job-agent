@@ -178,6 +178,39 @@ def mark_sent(table, pk: str) -> None:
         },
     )
 
+def reset_sent_jobs(table, days: int = 30) -> int:
+    """Reset SENT jobs older than `days` back to SCORED so they recirculate."""
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    reset_count = 0
+    last_key = None
+
+    while True:
+        kwargs = {
+            "FilterExpression": (
+                boto3.dynamodb.conditions.Attr("status").eq(STATUS_SENT)
+                & boto3.dynamodb.conditions.Attr("sent_at").lt(cutoff)
+            ),
+            "ProjectionExpression": "pk, sk",
+        }
+        if last_key:
+            kwargs["ExclusiveStartKey"] = last_key
+
+        response = table.scan(**kwargs)
+        for item in response.get("Items", []):
+            table.update_item(
+                Key={"pk": item["pk"], "sk": item["sk"]},
+                UpdateExpression="SET #s = :s REMOVE sent_at",
+                ExpressionAttributeNames={"#s": "status"},
+                ExpressionAttributeValues={":s": STATUS_SCORED},
+            )
+            reset_count += 1
+
+        last_key = response.get("LastEvaluatedKey")
+        if not last_key:
+            break
+
+    return reset_count
 
 def query_scored_above_threshold(table, threshold: int, limit: int = 25):
     """Query the GSI for SCORED jobs with fit_score >= threshold, top N."""

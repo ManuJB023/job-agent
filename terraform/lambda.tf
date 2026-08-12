@@ -115,6 +115,7 @@ resource "aws_lambda_function" "notifier" {
       NOTIFICATION_EMAIL  = var.notification_email
       SENDER_EMAIL        = var.sender_email
       FIT_SCORE_THRESHOLD = tostring(var.fit_score_threshold)
+      RECYCLE_DAYS        = tostring(var.recycle_days)
     }
   }
 

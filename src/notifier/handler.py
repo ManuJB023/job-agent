@@ -19,6 +19,7 @@ from shared import (
     log_json,
     mark_sent,
     query_scored_above_threshold,
+    reset_sent_jobs,
 )
 
 log = configure_logging()
@@ -150,10 +151,17 @@ def _format_salary(lo, hi) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 def handler(event, context):
     threshold = int(os.environ.get("FIT_SCORE_THRESHOLD", "70"))
+    recycle_days = int(os.environ.get("RECYCLE_DAYS", "30"))
     sender = os.environ["SENDER_EMAIL"]
     recipient = os.environ["NOTIFICATION_EMAIL"]
 
     table = get_table()
+
+    # Reset SENT jobs older than recycle_days back to SCORED
+    recycled = reset_sent_jobs(table, days=recycle_days)
+    if recycled:
+        log_json(log, "info", "notifier_recycled", count=recycled, days=recycle_days)
+
     jobs = query_scored_above_threshold(table, threshold, limit=25)
     log_json(log, "info", "notifier_query", count=len(jobs), threshold=threshold)
 
@@ -183,7 +191,6 @@ def handler(event, context):
         log_json(log, "error", "ses_send_failed", error=str(e))
         raise
 
-    # Mark all sent so they don't appear in tomorrow's digest.
     for j in jobs:
         try:
             mark_sent(table, j["pk"])

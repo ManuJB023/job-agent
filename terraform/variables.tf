@@ -26,6 +26,12 @@ variable "fit_score_threshold" {
   default     = 70
 }
 
+variable "recycle_days" {
+  description = "Days after which SENT jobs are reset to SCORED for recirculation."
+  type        = number
+  default     = 30
+}
+
 variable "collector_cron_expressions" {
   description = "EventBridge cron expressions for collector runs (UTC)."
   type        = list(string)
