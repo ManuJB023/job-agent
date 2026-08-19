@@ -99,7 +99,7 @@ resource "aws_iam_role" "notifier" {
 
 data "aws_iam_policy_document" "notifier" {
   statement {
-    actions   = ["dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:BatchWriteItem"]
+    actions = ["dynamodb:Query", "dynamodb:UpdateItem", "dynamodb:BatchWriteItem", "dynamodb:Scan"]
     resources = [
       aws_dynamodb_table.jobs.arn,
       "${aws_dynamodb_table.jobs.arn}/index/*",
