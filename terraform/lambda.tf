@@ -90,7 +90,7 @@ resource "aws_lambda_function" "scorer" {
       JOBS_TABLE          = aws_dynamodb_table.jobs.name
       LOG_LEVEL           = "INFO"
       ANTHROPIC_API_KEY_PARAM = "/job-agent/anthropic_api_key"
-      ANTHROPIC_MODEL     = "claude-haiku-4-5-20251001"
+      ANTHROPIC_MODEL     = "claude-haiku-4-5"
     }
   }
 
